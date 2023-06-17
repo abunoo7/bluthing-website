@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background-color: #000000;
+      margin: 0;
+      padding: 0;
+      min-width: 800px; /* Set the minimum width */
+      min-height: 600px; /* Set the minimum height */
+      max-width: 800px; /* Set the maximum width */
+      max-height: 600px; /* Set the maximum height */
+      overflow: hidden; /* Hide any content that exceeds the dimensions */
+    }
+    #character {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-color: blue;
+    }
+    .shot {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background-color: red;
+    }
+    .enemy {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-color: green;
+    }
+    #controls {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      color: white;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 24px;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div id="character"></div>
+  <div id="controls">Controls: W - A - S - D (Shoot: left mouse button, Boost: Space)</div>
+  <div id="score">Score: 0</div>
+  <script>
+    let character = document.getElementById("character");
+    let x = 0;
+    let y = 0;
+    let speed = 5;
+    let boost = 2;
+    let keys = {};
+    let shots = [];
+    let enemies = [];
+    let score = 0;
+    let scoreElement = document.getElementById("score");
+    let spawnCooldown = false;
+    let enemyDeathSound = new Audio('enemy-death.mp3'); // Add the path to your sound file
+
+    document.onkeydown = function(event) {
+      keys[event.keyCode] = true;
+    };
+
+    document.onkeyup = function(event) {
+      keys[event.keyCode] = false;
+    };
+
+    document.onmousedown = function(event) {
+      if (event.button === 0) { // left mouse button
+        // create a new "shot" element
+        let shot = document.createElement("div");
+        shot.classList.add("shot");
+        shot.style.left = x + "px";
+        shot.style.top = y + "px";
+        document.body.appendChild(shot);
+        shots.push(shot);
+      }
+    };
+
+    function createEnemy() {
+      let enemy = document.createElement("div");
+      enemy.classList.add("enemy");
+      enemy.style.left = window.innerWidth + "px";
+      enemy.style.top = y + "px";
+      document.body.appendChild(enemy);
+      enemies.push(enemy);
+    }
+
+    function move() {
+      let currentSpeed = speed;
+      if (keys[32]) {
+        currentSpeed *= boost;
+      }
+      if (keys[87]) {
+        y -= currentSpeed;
+      }
+      if (keys[65]) {
+        x -= currentSpeed;
+      }
+      if (keys[83]) {
+        y += currentSpeed;
+      }
+      if (keys[68]) {
+        x += currentSpeed;
+      }
+
+      // Check if the character reaches the boundaries
+      if (x < 0) {
+        x = 0;
+      }
+      if (x > window.innerWidth - character.offsetWidth) {
+        x = window.innerWidth - character.offsetWidth;
+      }
+      if (y < 0) {
+        y = 0;
+      }
+      if (y > window.innerHeight - character.offsetHeight) {
+        y = window.innerHeight - character.offsetHeight;
+      }
+
+      character.style.left = x + "px";
+      character.style.top = y + "px";
+
+      // Move the shots
+      for (let i = 0; i < shots.length; i++) {
+        let shot = shots[i];
+        let left = parseInt(shot.style.left);
+        left += 10;
+        shot.style.left = left + "px";
+
+        // Check if the shot collides with any enemy
+        for (let j = 0; j < enemies.length; j++) {
+          let enemy = enemies[j];
+          if (checkCollision(shot, enemy)) {
+            shot.remove();
+            shots.splice(i, 1);
+            i--;
+            enemy.remove();
+            enemies.splice(j, 1);
+            j--;
+            score += 1; // Increase the score by 1
+            scoreElement.innerText = "Score: " + score;
+            enemyDeathSound.play(); // Play the sound effect
+            break
+          }
+        }
+
+        // Check if the shot went off the screen
+        if (left > window.innerWidth) {
+          shot.remove();
+          shots.splice(i, 1);
+          i--;
+        }
+      }
+
+      // Move the enemies
+      for (let i = 0; i < enemies.length; i++) {
+        let enemy = enemies[i];
+        let left = parseInt(enemy.style.left);
+        left -= 3;
+        enemy.style.left = left + "px";
+
+        // Check if the enemy collides with the character
+        if (checkCollision(enemy, character)) {
+          alert("Game Over! Score: " + score);
+          location.reload();
+          break;
+        }
+
+        // Check if the enemy went off the screen
+        if (left + enemy.offsetWidth < 0) {
+          enemy.remove();
+          enemies.splice(i, 1);
+          i--;
+        }
+      }
+
+      // Create new enemies randomly every 1 second
+      if (!spawnCooldown && Math.random() < 0.02) {
+        createEnemy();
+        spawnCooldown = true;
+        setTimeout(() => {
+          spawnCooldown = false;
+        }, 1000);
+      }
+
+      requestAnimationFrame(move);
+    }
+
+    function checkCollision(element1, element2) {
+      const rect1 = element1.getBoundingClientRect();
+      const rect2 = element2.getBoundingClientRect();
+      return !(
+        rect1.top > rect2.bottom ||
+        rect1.bottom < rect2.top ||
+        rect1.left > rect2.right ||
+        rect1.right < rect2.left
+      );
+    }
+
+    requestAnimationFrame(move);
+  </script>
+</body>
+</html>
